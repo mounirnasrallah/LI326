@@ -1,0 +1,1 @@
+sprites.o: sprites.s

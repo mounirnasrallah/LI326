@@ -20,8 +20,14 @@ BUILD		:=	build
 SOURCES		:=	source
 DATA		:=	data  
 INCLUDES	:=	include
-SPRITES		:=  sprites
-MUSIC		:=  sounds
+SPRITES		:=  	sprites
+MUSIC		:= 	sounds
+
+GRAPHICS	:=	bmp	# Dossier pour les fichiers bitmaps
+
+#3D	:=	3D	# Dossier pour les fichiers 3D et les utilitaires
+
+#SCRIPT3D=scripts/PLYtoDS	#Script de conversion PLY to bin ( DS )
 
 #---------------------------------------------------------------------------------
 # options for code generation
@@ -42,9 +48,8 @@ LDFLAGS	=	-specs=ds_arm9.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 #---------------------------------------------------------------------------------
 # any extra libraries we wish to link with the project (order is important)
 #---------------------------------------------------------------------------------
-LIBS	:= 	-lmm9 -lnds9
- 
- 
+LIBS	:= 	-lmm9 -lfat -lnds9	# Ajout de libfat pour l'ecriture/lecture de fichiers
+  
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing
 # include and lib
@@ -72,7 +77,12 @@ SFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
 BINFILES	:=	$(foreach dir,$(DATA),$(notdir $(wildcard $(dir)/*.*))) soundbank.bin
 SPRITE_FILES   :=  $(foreach dir, $(SPRITES),$(notdir $(wildcard $(dir)/*.png)))
 export AUDIOFILES       :=      $(foreach dir,$(notdir $(wildcard $(MUSIC)/*.*)),$(CURDIR)/$(MUSIC)/$(dir))
- 
+
+
+BMP_FILES   :=  $(foreach dir, $(SPRITES),$(notdir $(wildcard $(dir)/*.bmp)))		# Les fichiers bitmaps
+
+#3D_FILES	:=	$(foreach dir, $(3D),$(notdir $(wildcard $(dir)/*.ply)))	#Les fichiers 3D 
+
 #---------------------------------------------------------------------------------
 # use CXX for linking C++ projects, CC for standard C
 #---------------------------------------------------------------------------------
@@ -88,9 +98,9 @@ endif
 #---------------------------------------------------------------------------------
 
 export OFILES	:=	$(SPRITE_FILES:.png=.o) \
-				$(addsuffix .o,$(BINFILES)) \
-			$(CPPFILES:.cpp=.o) $(CFILES:.c=.o) $(SFILES:.s=.o)
- 
+			$(addsuffix .o,$(BINFILES)) \
+			$(CPPFILES:.cpp=.o) $(CFILES:.c=.o) $(SFILES:.s=.o) $(BMP_FILES:.bmp=.o) $(3D_FILES:.ply=.bin)
+
 export INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
 			$(foreach dir,$(LIBDIRS),-I$(dir)/include) \
 			$(foreach dir,$(LIBDIRS),-I$(dir)/include) \
@@ -112,16 +122,29 @@ clean:
 
 #---------------------------------------------------------------------------------
 else
- 
+
 #---------------------------------------------------------------------------------
 # main targets
 #---------------------------------------------------------------------------------
 $(OUTPUT).nds	: 	$(OUTPUT).elf
-$(OUTPUT).elf	:	$(OFILES)
+$(OUTPUT).elf	:	$(OFILES) 
+
+
+files3D:${3D_FILES}
+	$(SCRIPT3D) $< -o ${DATA}
 
 #---------------------------------------------------------------------------------
 %.s %.h : %.png
 	grit $< -ff../sprites/sprite.grit -o$*
+
+# Règle pour les fichiers .bmp
+%.s %.h : %.bmp
+	grit $< -gb -gB8 -o$*
+
+# Règle pour les fichiers .ply ( 3D ) 
+#%.bin : ${3D_FILES}/%.ply
+#	$(SCRIPT3D) $< -o $*
+
 #---------------------------------------------------------------------------------
 
 #---------------------------------------------------------------------------------
@@ -130,7 +153,8 @@ $(OUTPUT).elf	:	$(OFILES)
 soundbank.bin : $(AUDIOFILES)
 #---------------------------------------------------------------------------------
 	mmutil $^ -d -osoundbank.bin -hsoundbank.h
-	
+
+
 #---------------------------------------------------------------------------------
 %.bin.o	:	%.bin
 #---------------------------------------------------------------------------------
